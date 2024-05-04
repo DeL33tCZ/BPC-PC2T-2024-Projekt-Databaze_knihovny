@@ -10,8 +10,4 @@ public class Romany extends Kniha {
     public String getZanr() {
         return zanr;
     }
-
-    public void setZanr(String zanr) {
-        this.zanr = zanr;
-    }
 }

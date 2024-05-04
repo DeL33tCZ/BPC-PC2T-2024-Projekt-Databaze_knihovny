@@ -10,8 +10,4 @@ public class Ucebnice extends Kniha {
     public int getProRocnik() {
         return pro_rocnik;
     }
-
-    public void setProRocnik(int pro_rocnik) {
-        this.pro_rocnik = pro_rocnik;
-    }
 }
