@@ -139,8 +139,3 @@ public class Aplikace {
         }
     }
 }
-//TODO
-//vyzkouset vsechny stavy, ktere mohou nastat pri nespravnem pouziti
-//chybove hlasky
-
-//smazat test a komentare!!!

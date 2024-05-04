@@ -49,15 +49,79 @@ public class Databaze {
     }
 
     public void changeKniha(String nazev) {
-         easySearch(nazev, "nazev", "upravit");
+        String vratit = easySearch(nazev, "nazev");
+        if(!vratit.equals("!")) {
+            boolean subrun = true;
+            String autor;
+            int rok_vydani, moznost;
+            while (subrun) {
+                System.out.println("------------------------------------------------------------------------------------");
+                System.out.println("Vyberte požadovanou úpravu knihy:");
+                System.out.println(" 1 .. změna autora(u)");
+                System.out.println(" 2 .. změna roku vydání");
+                System.out.println(" 3 .. změna stavu dostupnosti");
+                System.out.println(" 4 .. vyskočit z úprav knihy");
+                System.out.print("Vybraná možnost: ");
+                moznost = pouzeCelaCisla(sc);
+                System.out.println("------------------------------------------------------------------------------------");
+                switch (moznost) {
+                    case 1:
+                        sc.nextLine();
+                        System.out.println("Zadejte nového autora(y) (jméno přijmení, ...):");
+                        autor = sc.nextLine();
+                        if (prvky.get(vratit) instanceof Romany) {
+                            prvky.put(vratit, new Romany(vratit, autor, prvky.get(vratit).getRokVydani(), ((Romany) prvky.get(vratit)).getZanr()));
+                        } else {
+                            prvky.put(vratit, new Ucebnice(vratit, autor, prvky.get(vratit).getRokVydani(), ((Ucebnice) prvky.get(vratit)).getProRocnik()));
+                        }
+                        break;
+                    case 2:
+                        sc.nextLine();
+                        System.out.println("Zadejte nový rok vydání:");
+                        rok_vydani = pouzeCelaCisla(sc);
+                        if (prvky.get(vratit) instanceof Romany) {
+                            prvky.put(vratit, new Romany(vratit, prvky.get(vratit).getAutor(), rok_vydani, ((Romany) prvky.get(vratit)).getZanr()));
+                        } else {
+                            prvky.put(vratit, new Ucebnice(vratit, prvky.get(vratit).getAutor(), rok_vydani, ((Ucebnice) prvky.get(vratit)).getProRocnik()));
+                        }
+                        break;
+                    case 3:
+                        prvky.get(vratit).changeStavDostupnosti();
+                        break;
+                    default:
+                        subrun = false;
+                        break;
+                }
+            }
+        }
     }
 
     public void deleteKniha(String nazev) {
-        easySearch(nazev, "nazev", "smazat");
+        String vratit = easySearch(nazev, "nazev");
+        if(!vratit.equals("!")) {
+            prvky.remove(vratit);
+            System.out.println("Kniha '" + vratit + "' byla odstraněna z databáze!");
+        }
     }
 
     public void changeDostupnostKnihy(String nazev) {
-        easySearch(nazev, "nazev", "zmena_stavu");
+        String vratit = easySearch(nazev, "nazev");
+        if(!vratit.equals("!")) {
+            int moznost;
+            System.out.println("Zadejte aktuální stav knihy:");
+            System.out.println(" 1 .. vypůjčená");
+            System.out.println(" 2 .. vrácená");
+            System.out.print("Vybraná možnost: ");
+            moznost = pouzeCelaCisla(sc);
+            switch (moznost) {
+                case 1:
+                    prvky.get(vratit).setStavDostupnosti("vypůjčeno");
+                    break;
+                case 2:
+                    prvky.get(vratit).setStavDostupnosti("k dispozici");
+                    break;
+            }
+        }
     }
 
     public void printKnihyAbecedne() {
@@ -76,15 +140,15 @@ public class Databaze {
     }
 
     public void getKniha(String nazev) {
-        easySearch(nazev, "nazev", "print");
+        printEasySearchOutput(easySearch(nazev, "nazev"), "nazev");
     }
 
-    public void printKnihyAutora(String vautor) {
-        easySearch(vautor, "autor", "print");
+    public void printKnihyAutora(String autor) {
+        printEasySearchOutput(easySearch(autor, "autor"), "autor");
     }
 
     public void printKnihyZanru(String zanr) {
-        easySearch(zanr, "zanr", "print");
+        printEasySearchOutput(easySearch(zanr, "zanr"), "zanr");
     }
 
     public void printKnihyVypujcene() {
@@ -109,7 +173,15 @@ public class Databaze {
     }
 
     public void saveKniha(String nazev) {
-        easySearch(nazev, "nazev", "ulozit");
+        String vratit = easySearch(nazev, "nazev");
+        Kniha kniha = prvky.get(vratit);
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        String json_string = gson.toJson(kniha);
+        try (FileWriter file = new FileWriter("knizky/" + vratit + ".json")) {
+            file.write(json_string);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void loadKniha(String nazev_souboru) {
@@ -119,7 +191,7 @@ public class Databaze {
             prvky.put(kniha.getNazev(), kniha);
         }
         catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("! Zadaný název souboru '" + nazev_souboru + "' nebyl nalezen!");
         }
     }
 
@@ -187,7 +259,7 @@ public class Databaze {
         }
     }
 
-    private void easySearch(String findme, String kriterium_hledani, String kriterium_cinu) {
+    private String easySearch(String findme, String kriterium_hledani) {
         Collection knihy = prvky.values();
         ArrayList<Kniha> seznam = new ArrayList<>(knihy);
         if(kriterium_hledani.equals("autor")) {
@@ -286,101 +358,33 @@ public class Databaze {
             }
         }
         if(vysledek.isEmpty()) {
-            System.out.println("! Pro zadaný výraz " + findme + " nebyl nalezen žádný výstup!");
+            System.out.println("! Pro zadaný výraz '" + findme + "' nebyl nalezen žádný výstup!");
+            return "!";
         }
         else {
-            String vratit;
             if(vysledek.size() > 1) {
-                vratit = choose(findme, vysledek);
-            } else {
-                vratit = vysledek.get(0);
+                return choose(findme, vysledek);
             }
-            switch (kriterium_cinu) {
-                case "print" -> {
-                    for (Kniha kniha : seznam) {
-                        if (kriterium_hledani.equals("autor") && vratit.equals(kniha.getAutor())) {
-                            printTypKnihy(kniha);
-                        } else if (kriterium_hledani.equals("nazev") && vratit.equals(kniha.getNazev())) {
-                            printTypKnihy(kniha);
-                        } else if (kriterium_hledani.equals("zanr") && (kniha instanceof Romany && vratit.equals(((Romany) kniha).getZanr()))) {
-                            System.out.println("Román:\t název: " + kniha.getNazev() + ", autor(i): " + kniha.getAutor() + ", rok vydání: " + kniha.getRokVydani() + ", žánr: " + ((Romany) kniha).getZanr() + ", stav: " + kniha.getStavDostupnosti());
-                        }
-                    }
-                }
-                case "zmena_stavu" -> {
-                    int moznost;
-                    System.out.println("Zadejte aktuální stav knihy:");
-                    System.out.println(" 1 .. vypůjčená");
-                    System.out.println(" 2 .. vrácená");
-                    System.out.print("Vybraná možnost: ");
-                    moznost = pouzeCelaCisla(sc);
-                    switch (moznost) {
-                        case 1:
-                            prvky.get(vratit).setStavDostupnosti("vypůjčeno");
-                            break;
-                        case 2:
-                            prvky.get(vratit).setStavDostupnosti("k dispozici");
-                            break;
-                    }
-                }
-                case "smazat" -> {
-                    prvky.remove(vratit);
-                    System.out.println("Kniha " + vratit + " byla odstraněna z databáze!");
-                }
-                case "upravit" -> {
-                    boolean subrun = true;
-                    String autor;
-                    int rok_vydani, moznost;
-                    while (subrun) {
-                        System.out.println("------------------------------------------------------------------------------------");
-                        System.out.println("Vyberte požadovanou úpravu knihy:");
-                        System.out.println(" 1 .. změna autora(u)");
-                        System.out.println(" 2 .. změna roku vydání");
-                        System.out.println(" 3 .. změna stavu dostupnosti");
-                        System.out.println(" 4 .. vyskočit z úprav knihy");
-                        System.out.print("Vybraná možnost: ");
-                        moznost = pouzeCelaCisla(sc);
-                        System.out.println("------------------------------------------------------------------------------------");
-                        switch (moznost) {
-                            case 1:
-                                sc.nextLine();
-                                System.out.println("Zadejte nového autora(y) (jméno přijmení, ...):");
-                                autor = sc.nextLine();
-                                if (prvky.get(vratit) instanceof Romany) {
-                                    prvky.put(vratit, new Romany(vratit, autor, prvky.get(vratit).getRokVydani(), ((Romany) prvky.get(vratit)).getZanr()));
-                                } else {
-                                    prvky.put(vratit, new Ucebnice(vratit, autor, prvky.get(vratit).getRokVydani(), ((Ucebnice) prvky.get(vratit)).getProRocnik()));
-                                }
-                                break;
-                            case 2:
-                                sc.nextLine();
-                                System.out.println("Zadejte nový rok vydání:");
-                                rok_vydani = pouzeCelaCisla(sc);
-                                if (prvky.get(vratit) instanceof Romany) {
-                                    prvky.put(vratit, new Romany(vratit, prvky.get(vratit).getAutor(), rok_vydani, ((Romany) prvky.get(vratit)).getZanr()));
-                                } else {
-                                    prvky.put(vratit, new Ucebnice(vratit, prvky.get(vratit).getAutor(), rok_vydani, ((Ucebnice) prvky.get(vratit)).getProRocnik()));
-                                }
-                                break;
-                            case 3:
-                                prvky.get(vratit).changeStavDostupnosti();
-                                break;
-                            default:
-                                subrun = false;
-                                break;
-                        }
-                    }
-                }
-                case "ulozit" -> {
-                    Kniha kniha = prvky.get(vratit);
-                    Gson gson = new GsonBuilder().setPrettyPrinting().create();
-                    String json_string = gson.toJson(kniha);
-                    try (FileWriter file = new FileWriter("knizky/" + vratit + ".json")) {
-                        file.write(json_string);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
+            return vysledek.get(0);
+        }
+    }
+
+    private void printEasySearchOutput(String vratit, String kriterium_hledani) {
+        Collection knihy = prvky.values();
+        ArrayList<Kniha> seznam = new ArrayList<>(knihy);
+        if(kriterium_hledani.equals("autor")) {
+            Collections.sort(seznam, KnihaCompare.compareRok());
+        }
+        else if(kriterium_hledani.equals("nazev") || kriterium_hledani.equals("zanr")) {
+            Collections.sort(seznam, KnihaCompare.compareAbecedne());
+        }
+        for (Kniha kniha : seznam) {
+            if (kriterium_hledani.equals("autor") && vratit.equals(kniha.getAutor())) {
+                printTypKnihy(kniha);
+            } else if (kriterium_hledani.equals("nazev") && vratit.equals(kniha.getNazev())) {
+                printTypKnihy(kniha);
+            } else if (kriterium_hledani.equals("zanr") && (kniha instanceof Romany && vratit.equals(((Romany) kniha).getZanr()))) {
+                System.out.println("Román:\t název: " + kniha.getNazev() + ", autor(i): " + kniha.getAutor() + ", rok vydání: " + kniha.getRokVydani() + ", žánr: " + ((Romany) kniha).getZanr() + ", stav: " + kniha.getStavDostupnosti());
             }
         }
     }
